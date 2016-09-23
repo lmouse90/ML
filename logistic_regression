@@ -1,0 +1,110 @@
+
+## 问题引出：
+
+实际工作中，我们可能会遇到如下问题：
+* 预测一个用户是否点击特定的商品
+* 判断用户的性别
+* 预测用户是否会购买给定的品类
+* 判断一条评论是正面的还是负面的
+
+这些都可以看做是分类问题，更准确地，都可以看做是二分类问题。
+
+Logistic 回归类似于线性回归模型，但更适用于因变量为二分变量的模型
+
+## 总结
+* 优点：计算代价不高，易于理解和实现
+* 缺点：容易欠拟合，分类精度可能不高
+* 适用数据类型：数值型和标称型数据
+
+## Sigmoid函数：
+* `$h_\theta(x)=g(\theta^Tx)=\frac{1}{1+e^{-\theta^Tx}}$`
+* X是变量，`$\theta$`是参数
+* 如果我们有合适的参数向量θ，以及样本x，那么对样本x分类就可以通过上式计算出一个概率值来，如果概率值大于0.5，我们就说样本是正类，否则样本是负类。
+* ![Sigmoid函数](http://img.bimg.126.net/photo/f0Mks6829W47XdveM6NMug==/3415698842385787951.jpg)
+* Logistic回归也可以被看成是一种概率估计
+
+## 回归系数确定：
+
+* 公式：`$z=w_0x_0 + w_1x_1 + w_2x_2 + \cdot\cdot\cdot + w_nx_n(z=w^Tx)$`
+
+#### 梯度上升法
+* 方法：要找到某函数的最大值，最好的方法是沿着该函数的梯度方向探寻。
+* 每次更新回归系数时需要遍历整个数据集，如果数据量过大，计算复杂度就太高。
+
+#### 梯度上升算法推导：
+
+* Sigmoid函数：`$h_\theta(x)=g(\theta^Tx)=\frac{1}{1+e^{-\theta^Tx}}$`
+* 由于sigma函数的特性，我们做如下假设：即在一直样本X和参数`$\theta$`的情况下，样本属于(y=1)和(y=0)条件概率
+    * `$P(y=1|x;\theta) = h_\theta(x)$`
+    * `$P(y=0|x;\theta) = 1-h_\theta(x)$`
+* 单个样本正确预测的概率为：`$P(y|x;\theta) = (h_\theta(x))^y(1-h_\theta(x))^{1-y}$`
+* 最大似然估计：
+    
+    `$L(\theta)=p(\vec y|X;\theta)$`
+    
+    `$\ \ \ \ \ \ \ \  =\prod_{i=1}^mp(y^i|x^i;\theta)$`
+    
+    `$\ \ \ \ \ \ \ \ =\prod_{i=1}^m(h_\theta(x^i))^{y^i}(1-h_\theta(x^i))^{1-y^i}$`
+* 转化： `$\frac{\partial\ell(\theta)}{\partial\theta_j}=\frac{\partial\ell(\theta)}{\partial g(\theta^Tx)}*\frac{\partial g(\theta^Tx)}{\partial\theta^Tx}*\frac{\partial(\theta^Tx)}{\partial\theta_j}$`
+* 求解1：
+
+    `$\ell(\theta)=logL(\theta)=\sum_{i=1}^my^ilogh(x^i)+(1-y^i)log(1-h(x^i))$`
+    
+    `$\frac{\partial}{\partial g(\theta^Tx)}\ell(\theta) = \frac{\partial(y*log(h_\theta(x))+(1-y)log(1-h_\theta(x)))}{\partial h_\theta(x)}$`
+    `$\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \  =y* \frac{1}{g(\theta^Tx)} + (1-y)* \frac{1}{1-g(\theta^Tx)}*(-1)$`
+* 求解2
+
+    `$g^\prime(z)=\frac{d}{dz}\frac{1}{1+e^{-z}}=\frac{1}{(1+e^{-z})^2}(e^{-z})=\frac{1}{1+e^{-z}}\cdot(1-\frac{1}{1+e^{-z}})=g(z)(1-g(z))$`
+    
+    `$\frac{\partial }{\partial\theta^Tx}g(\theta^Tx)=g(\theta^Tx)*(1-g(\theta^Tx))$`
+* 求解3
+
+    `$\frac{\partial}{\partial\theta_j}\theta^Tx=\frac{\partial(\theta_1x_1+\theta_2x2+\cdots+\theta_mx_m)}{\partial\theta_j}=x_j$`
+    
+* 代入进去得到：
+`$\frac{\partial}{\partial\theta_j}\ell(\theta)= (y-h_\theta(x))x_j$`
+
+* 梯度迭代公式为：
+    `$\theta_j := \theta_j + \alpha(y^i - h_\theta(x^i))x_j^i$`
+
+```
+
+## Python实现
+
+* 基本方法
+```python
+def gradAscent(dataMatIn, classLabels):
+    dataMatrix = mat(dataMatIn)             #convert to NumPy matrix
+    labelMat = mat(classLabels).transpose() #convert to NumPy matrix
+    m,n = shape(dataMatrix)
+    alpha = 0.001
+    maxCycles = 500
+    weights = ones((n,1))
+    for k in range(maxCycles):              #heavy on matrix operations
+        h = sigmoid(dataMatrix*weights)     #matrix mult
+        error = (labelMat - h)              #vector subtraction
+        weights = weights + alpha * dataMatrix.transpose()* error #matrix mult
+    return weights
+```
+
+* 加入随机
+```python
+def stocGradAscent1(dataMatrix, classLabels, numIter=150):
+    m,n = shape(dataMatrix)
+    weights = ones(n)   #initialize to all ones
+    for j in range(numIter):
+        dataIndex = range(m)
+        for i in range(m):
+            alpha = 4/(1.0+j+i)+0.0001    #apha decreases with iteration, does not 
+            randIndex = int(random.uniform(0,len(dataIndex)))#go to 0 because of the constant
+            h = sigmoid(sum(dataMatrix[randIndex]*weights))
+            error = classLabels[randIndex] - h
+            weights = weights + alpha * error * dataMatrix[randIndex]
+            del(dataIndex[randIndex])
+    return weights
+```
+
+
+## 参考：
+* 机器学习实战
+* http://m.blog.csdn.net/article/details?id=49872433
